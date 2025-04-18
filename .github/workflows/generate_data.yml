@@ -3,7 +3,6 @@ name: Generate Lookup Data
 on:
   push:
     paths:
-      - 'generate_*.py'
       - '.github/workflows/generate_data.yml'
 
 jobs:
@@ -11,28 +10,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
-
-      - name: Install deps
-        run: pip install mpmath numpy
-
-      - name: Make data directory
-        run: mkdir -p data
-
-      - name: Generate zeros100k.npy
-        run: python generate_zeros100k.py
-
-      - name: Generate pi100k.npy
-        run: python generate_pi100k.py
-
-      - name: Commit lookup files
+          python-version: '3.10'
+      - name: Install dependencies
+        run: pip install numpy
+      - name: Run generate scripts
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/zeros100k.npy data/pi100k.npy
-          git commit -m "🔄 Generate lookup data"
-          git push
+          python generate_zeros100k.py
+          python generate_pi100k.py
+      - name: Upload files
+        uses: actions/upload-artifact@v3
+        with:
+          name: data-files
+          path: data/*.npy
