@@ -2,52 +2,41 @@ import streamlit as st
 from mpmath import mp, zetazero, primepi
 import matplotlib.pyplot as plt
 
-# ——————————————————————————————
-# أول أمر لازم يكون set_page_config
+# 1) لازم أول سطر
 st.set_page_config(page_title="Zone‑Pro Simple", layout="centered")
-
-# ——————————————————————————————
 st.title("Zone‑Pro Simplified")
 
-# ——————————————————————————————
-st.write("**إعدادات الحساب:**")
-cols = st.columns([1,1,1])
-with cols[0]:
+# 2) اختار الوظيفة
+task = st.radio("اختر الوظيفة:", ["Zeta Zero γₙ", "Prime Count π(x)"])
+
+# 3) حسب الاختيار حط الخانة المناسبة
+if task == "Zeta Zero γₙ":
     N = st.number_input("N = عدد أصفار زيتا", min_value=1, max_value=10000, value=300, step=1)
-with cols[1]:
+elif task == "Prime Count π(x)":
     X = st.number_input("X = احسب π(X) حتى", min_value=1, max_value=1000000, value=10000, step=1)
-with cols[2]:
+
+# 4) خيار الرسم للأصفار لو اخترتها
+do_plot = False
+if task == "Zeta Zero γₙ":
     do_plot = st.checkbox("أرسم منحنى الأصفار", value=False)
 
-# ——————————————————————————————
+# 5) زر التشغيل
 if st.button("تشغيل"):
-    # ضبط الدقة
-    mp.dps = max(50, int(N * 0.02) + 20)
+    mp.dps = 50  # دقة ثابتة أو تشغّل دالة get_precision لو حاب
 
-    # حساب الأصفار
-    zeros = [zetazero(i) for i in range(1, N+1)]
-    zeros_str = ", ".join(str(z) for z in zeros)
-    st.subheader(f"أول {N} صفر غير تافهة (نص فقط)")
-    st.write(zeros_str)
+    if task == "Zeta Zero γₙ":
+        zeros = [zetazero(i) for i in range(1, N+1)]
+        st.write("أول", N, "أصفار غير تافهة:")
+        st.write(", ".join(str(z) for z in zeros))
+        if do_plot:
+            fig, ax = plt.subplots()
+            ax.plot(list(range(1, N+1)), [z.imag for z in zeros], marker="o")
+            ax.set_xlabel("n")
+            ax.set_ylabel("Im(γₙ)")
+            st.pyplot(fig)
+        csv_data = "n,zero\n" + "\n".join(f"{i},{zeros[i-1]}" for i in range(1, N+1))
+        st.download_button("⬇️ تنزيل CSV للأصفار", csv_data, file_name=f"zeros_{N}.csv")
 
-    # حساب π(X)
-    piX = primepi(X)
-    st.subheader(f"π({X}) = {piX}")
-
-    # زر تنزيل CSV
-    csv_data = "n,zero\n" + "\n".join(f"{i},{zeros[i-1]}" for i in range(1, N+1))
-    st.download_button(
-        label="⬇️ تحميل الأصفار بصيغة CSV",
-        data=csv_data.encode("utf-8"),
-        file_name=f"zeta_zeros_{N}.csv",
-        mime="text/csv"
-    )
-
-    # الرسم إذا اختار المستخدم
-    if do_plot:
-        fig, ax = plt.subplots()
-        ax.plot(list(range(1, N+1)), [z.imag for z in zeros], marker="o")
-        ax.set_xlabel("n")
-        ax.set_ylabel("Im(γₙ)")
-        ax.set_title("الجزء التخيلي للأصفار")
-        st.pyplot(fig)
+    else:  # Prime Count
+        piX = primepi(X)
+        st.write(f"π({X}) =", piX)
