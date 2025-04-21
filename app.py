@@ -3,25 +3,41 @@ from mpmath import mp, zetazero, primepi
 import matplotlib.pyplot as plt
 
 # ——————————————————————————————
-MAX_PI_INTERACTIVE = 10_000_000  # أقصى قيمة تفاعلية مقترحة
-
+# ١) ضبط صفحة Streamlit
 st.set_page_config(page_title="Zone‑Pro Enhanced", layout="centered")
 st.title("Zone‑Pro Enhanced")
 
-task = st.radio("اختر الوظيفة:", ["Zeta Zero γₙ", "Prime Count π(x)"])
+# ——————————————————————————————
+# ٢) اختيار الوظيفة
+task = st.radio(
+    "اختر الوظيفة:",
+    ["Zeta Zero γₙ", "Prime Count π(x)"]
+)
 
+# ——————————————————————————————
 if task == "Zeta Zero γₙ":
-    N = st.number_input("N = رقم الصفر (1–100000)", 1, 100_000, 1, 1)
-    plot_zero = st.checkbox("أرسم منحنى حتى N", False)
-        if st.button("احسب"):
+    # مدخل N ما بين 1 و100000
+    N = st.number_input(
+        "N = رقم الصفر المراد حسابه (1–100000)",
+        min_value=1,
+        max_value=100000,
+        value=1,
+        step=1
+    )
+    plot_zero = st.checkbox("أرسم منحنى الأصفار حتى N", value=False)
+
+    if st.button("احسب"):
+        # مؤشر جارٍ الحساب
         with st.spinner("⏳ جاري حساب Zeta Zero…"):
             # ضبط الدقة وحساب الصفر
             mp.dps = max(50, int(N * 0.02) + 20)
             zero_n = zetazero(N)
 
+        # عرض النتيجة
         st.subheader(f"γₙ حيث n = {N}")
         st.write(str(zero_n))
 
+        # تجهيز ورسم المنحنى إذا طلب المستخدم
         if plot_zero:
             with st.spinner("⏳ جاري تجهيز بيانات الرسم…"):
                 max_plot = 2000
@@ -36,24 +52,21 @@ if task == "Zeta Zero γₙ":
             ax.set_ylabel("Im(γₙ)")
             ax.set_title(f"الجزء التخيلي للأصفار حتى n = {min(N, max_plot)}")
             st.pyplot(fig)
-            rng = range(1, min(N,2000)+1)
-            if N>2000: st.warning("رسم أول 2000 نقطة لتفادي البطء")
-            zeros = [zetazero(i) for i in rng]
-            fig,ax = plt.subplots(); ax.plot(rng,[z.imag for z in zeros],"-")
-            st.pyplot(fig)
 
-else:  # Prime Count π(x)
-    X = st.number_input(f"X = احسب π(X) حتى (1–{MAX_PI_INTERACTIVE:,})", 
-                        1, 1_000_000_000, 1, 1)
+elif task == "Prime Count π(x)":
+    # مدخل X ما بين 1 و10,000,000
+    X = st.number_input(
+        "X = احسب π(X) حتى (1–10000000)",
+        min_value=1,
+        max_value=10_000_000,
+        value=1,
+        step=1
+    )
+
     if st.button("احسب"):
-        if X > MAX_PI_INTERACTIVE:
-            st.error(f"⚠️ الحد التفاعلي هنا هو {MAX_PI_INTERACTIVE:,}. لقيم أكبر، يمكن تستخدم جهاز أقوى أو خدمة مخصصة.")
-        else:
-            with st.spinner("⏳ جاري حساب π(x)…"):
-                # تخزين مؤقت للنتائج
-                if "pi_cache" not in st.session_state:
-                    st.session_state.pi_cache = {}
-                if X not in st.session_state.pi_cache:
-                    st.session_state.pi_cache[X] = primepi(X)
-                piX = st.session_state.pi_cache[X]
-            st.subheader(f"π({X}) = {piX}")
+        # مؤشر جارٍ الحساب
+        with st.spinner("⏳ جاري حساب π(x)…"):
+            piX = primepi(X)
+
+        # عرض النتيجة
+        st.subheader(f"π({X}) = {piX}")
