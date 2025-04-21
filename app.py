@@ -13,12 +13,29 @@ task = st.radio("اختر الوظيفة:", ["Zeta Zero γₙ", "Prime Count π(
 if task == "Zeta Zero γₙ":
     N = st.number_input("N = رقم الصفر (1–100000)", 1, 100_000, 1, 1)
     plot_zero = st.checkbox("أرسم منحنى حتى N", False)
-    if st.button("احسب"):
-        mp.dps = max(50, int(N * 0.02) + 20)
-        zero_n = zetazero(N)
+        if st.button("احسب"):
+        with st.spinner("⏳ جاري حساب Zeta Zero…"):
+            # ضبط الدقة وحساب الصفر
+            mp.dps = max(50, int(N * 0.02) + 20)
+            zero_n = zetazero(N)
+
         st.subheader(f"γₙ حيث n = {N}")
         st.write(str(zero_n))
+
         if plot_zero:
+            with st.spinner("⏳ جاري تجهيز بيانات الرسم…"):
+                max_plot = 2000
+                rng = range(1, min(N, max_plot) + 1)
+                if N > max_plot:
+                    st.warning(f"⚠️ N كبير؛ سيتم رسم أول {max_plot} نقطة فقط")
+                zeros = [zetazero(i) for i in rng]
+
+            fig, ax = plt.subplots()
+            ax.plot(list(rng), [z.imag for z in zeros], linestyle='-')
+            ax.set_xlabel("n")
+            ax.set_ylabel("Im(γₙ)")
+            ax.set_title(f"الجزء التخيلي للأصفار حتى n = {min(N, max_plot)}")
+            st.pyplot(fig)
             rng = range(1, min(N,2000)+1)
             if N>2000: st.warning("رسم أول 2000 نقطة لتفادي البطء")
             zeros = [zetazero(i) for i in rng]
