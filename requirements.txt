@@ -1,5 +1,3 @@
 streamlit
-pycryptodome
-scipy
-numpy
 mpmath
+matplotlib
