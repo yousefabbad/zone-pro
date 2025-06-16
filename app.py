@@ -1,23 +1,20 @@
-# app.py  —  Zone-Pro (نسخة جاهزة)
-# واجهة ستريمليت لتحليل مفاتيح RSA بأصفار زيتا المحفوظة
-
+# app.py — ZonePro (إصدار خالٍ من OverflowError)
 import streamlit as st
 import numpy as np
 import math
 from Crypto.PublicKey import RSA
 from scipy.stats import chisquare
-from cache_zeros import ensure_zeta_cache   # يحضّر الأصفار أوتوماتيكيًا
+from cache_zeros import ensure_zeta_cache  # يحضر الأصفار أو يولّدها
 
-# ————————————————— إعداد ثابت —————————————————
-ZETA_ZEROS = ensure_zeta_cache()  # مصفوفة NumPy طولها 100,000 صفر
+# حمِّل أصفار زيتا (100k) من الكاش
+ZETA_ZEROS = ensure_zeta_cache()
 ZERO_OPTIONS = [100, 1_000, 10_000, 100_000]
-# ————————————————————————————————————————
 
 st.set_page_config(page_title="ZonePro – Zeta RSA Analyzer", layout="centered")
 st.title("🔐 ZonePro – تحليل مفاتيح RSA باستخدام أصفار زيتا")
 
 # 1) إدخال المفتاح
-mode = st.radio("طريقة إدخال المفتاح", ("رفع ملف PEM", "توليد داخل الأداة"))
+mode = st.radio("طريقة الإدخال:", ("رفع ملف PEM", "توليد داخل الأداة"))
 bits = st.selectbox("طول المفتاح عند التوليد", [512, 1024, 2048, 4096], index=2)
 
 pem_bytes = None
@@ -30,7 +27,7 @@ else:
         pem_bytes = RSA.generate(bits).publickey().export_key()
 
 if not pem_bytes:
-    st.stop()  # ننتظر إدخال المفتاح
+    st.stop()
 
 # 2) استخراج n و e
 try:
@@ -41,19 +38,20 @@ except Exception as err:
     st.error(f"خطأ في قراءة المفتاح: {err}")
     st.stop()
 
-st.success(f"المفتاح جاهز\n\nBit-length: {n.bit_length()} بت | e = {e}")
+st.success(f"Bit-length: {n.bit_length()} بت | e = {e}")
 
-# 3) اختيار عدد الأصفار المستخدمة
-count = st.select_slider("عدد أصفار زيتا في التحليل", options=ZERO_OPTIONS, value=1_000)
+# 3) اختيار عدد الأصفار
+count = st.select_slider("عدد أصفار زيتا المستخدمة", options=ZERO_OPTIONS, value=1_000)
 gamma = ZETA_ZEROS[:count]
 
-# 4) التحليل الإحصائي
-mods = (n % (gamma * 1e9).astype(np.int64)) / (gamma * 1e9)  # نسب البواقي
-sigma   = float(mods.std())
+# 4) التحليل مع معالجة الأعداد الضخمة بدون Overflow
+denoms = [g * 1e9 for g in gamma]                          # المقامات
+ratios = np.array([(n % int(d)) / d for d in denoms])      # البواقي كنِسب
 
-hist, _ = np.histogram(mods, bins=20, range=(0.0, 1.0))
+sigma = float(ratios.std())
+hist, _ = np.histogram(ratios, bins=20, range=(0.0, 1.0))
 chi2, _ = chisquare(hist, np.full_like(hist, hist.sum() / 20))
-prob    = hist / hist.sum()
+prob = hist / hist.sum()
 entropy = -float(np.sum(prob * np.log2(prob, where=prob > 0)))
 
 # 5) عرض النتائج
