@@ -1,59 +1,31 @@
-import streamlit as st, numpy as np, math
-from Crypto.PublicKey import RSA
-from scipy.stats import chisquare
-from cache_zeros import ensure_zeta_cache
+import streamlit as st
+import numpy as np
+import math, os
 
-ZETA = ensure_zeta_cache()
-OPTIONS = [100, 1_000, 10_000, 100_000]
+# تحميل الجداول جاهزة
+ZEROS_PATH = "data/zeros100k.npy"
+PI_PATH    = "data/pi100k.npy"
 
-st.set_page_config(page_title="ZonePro Zeta-RSA", layout="centered")
-st.title("🔐 ZonePro – تحليل مفاتيح RSA بأصفار زيتا")
-
-mode = st.radio("طريقة الإدخال", ("رفع PEM", "توليد"))
-bits = st.selectbox("طول عند التوليد", [512, 1024, 2048, 4096], 2)
-
-pem = None
-if mode == "رفع PEM":
-    up = st.file_uploader("📎 ارفع PEM", ["pem"])
-    if up: pem = up.read()
-else:
-    if st.button("🎲 توليد مفتاح"):
-        pem = RSA.generate(bits).publickey().export_key()
-
-if not pem:
+if not (os.path.exists(ZEROS_PATH) and os.path.exists(PI_PATH)):
+    st.error("❌ لم أجد ملفات البيانات.\n"
+             "شغّل generate_zeros100k.py و generate_pi100k.py أولاً.")
     st.stop()
 
-try:
-    key = RSA.import_key(pem); n, e = key.n, key.e
-except Exception as err:
-    st.error("خطأ PEM: " + str(err)); st.stop()
+zeta_zeros = np.load(ZEROS_PATH)
+prime_pi   = np.load(PI_PATH)
 
-st.success(f"Bit-len: {n.bit_length()} | e: {e}")
+MAX_ZERO = len(zeta_zeros)
+MAX_X    = len(prime_pi) - 1
 
-count = st.select_slider("أصفار زيتا", options=OPTIONS, value=1_000)
-γ = ZETA[:count]; den = γ * 1e9
-ratios = np.array([(n % int(d)) / d for d in den])
+# واجهة Streamlit
+st.set_page_config(page_title="ZonePro – صدف رياضي", layout="centered")
+st.title("🧮 ZonePro – أصفار زيتا و π(x) من دون تأخير")
 
-σ = float(ratios.std())
-hist, _ = np.histogram(ratios, bins=20, range=(0.,1.))
-χ2, _ = chisquare(hist, np.full_like(hist, hist.sum()/20))
-prob = hist / hist.sum()
-entropy = -float(np.sum(prob * np.log2(prob, where=prob>0)))
-rel = σ / math.log2(n)
+mode = st.radio("اختر العملية:", ["γₙ – الصفر رقم n", "π(x) – عدد الأعداد الأولية ≤ x"])
 
-st.markdown(f"""
-**σ:** `{σ:.6f}`  
-**σ/log₂(n):** `{rel:.6f}`  
-**χ²:** `{χ2:.2f}`  
-**Entropy:** `{entropy:.3f}` / `4.322`
-""")
-st.bar_chart(hist)
-
-# 🟢 تقييم أكثر صرامة
-good = (n.bit_length() >= 2048 and e == 65537 and 8 <= χ2 <= 28
-        and entropy >= 4.10 and rel > 0.002)
-
-if good:
-    st.success("✅ المفتاح جيّد التوليد رياضياً")
+if mode.startswith("γ"):
+    n = st.number_input(f"أدخل n (1 – {MAX_ZERO})", min_value=1, max_value=MAX_ZERO, value=1000)
+    st.success(f"γₙ (الصفر رقم {n}) = {zeta_zeros[n-1]}")
 else:
-    st.error("❌ المفتاح مشبوه أو ضعيف")
+    x = st.number_input(f"أدخل x (≤ {MAX_X})", min_value=2, max_value=MAX_X, value=1000, step=100)
+    st.success(f"π({x}) = {prime_pi[x]}")
